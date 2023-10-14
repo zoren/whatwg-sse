@@ -2,6 +2,7 @@ import fs from 'fs'
 import type { IncomingMessage } from 'node:http'
 import type { Readable } from 'node:stream'
 import cookie from 'cookie'
+import path from 'path'
 
 //https://stackoverflow.com/a/49428486
 // function streamToString (stream) {
@@ -75,6 +76,21 @@ function streaming (request: Request) {
   })
 }
 
+function index ({ method, url }: Request) {
+  const js = fs.readFileSync('doc.js', 'utf8')
+  const html = `
+  <script>
+${js}
+  </script>
+  Hi ${method} ${url} ${new Date().toISOString()}
+  `
+
+  return new Response(html, {
+    status: 200,
+    headers: { 'content-type': 'text/html' }
+  })
+}
+
 export async function requestToResponse (request: Request) {
   const { method, bodyUsed, body, headers, mode } = request
   const url = new URL(request.url)
@@ -91,21 +107,9 @@ export async function requestToResponse (request: Request) {
     console.log({ cookieStr, searchBody, cookie: parseCookie(cookieStr) })
   }
 
-  if (pathname === '/streaming') {
-    return streaming(request)
-  } else if (pathname === '/favicon.ico') {
-    return new Response('favicon', { status: 404 })
+  switch (pathname) {
+    case '/': return index(request)
+    case '/streaming': return streaming(request)
   }
-  const js = fs.readFileSync('doc.js', 'utf8')
-  const html = `
-  <script>
-${js}
-  </script>
-  Hi ${method} ${url} ${new Date().toISOString()}
-  `
-
-  return new Response(html, {
-    status: 200,
-    headers: { 'content-type': 'text/html' }
-  })
+  return new Response('not found', { status: 404 })
 }
